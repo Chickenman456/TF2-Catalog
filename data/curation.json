@@ -1,0 +1,56 @@
+{
+ "_about": "Things the game files can't tell us. Keys are item defindexes (or ranges like 100-120). 'reskins'/'not_reskins' correct the automatic same-stats-as-another-weapon check. Pull requests welcome.",
+ "hidden": {
+  "122-124": "Cheat-detector notes, not real items",
+  "5606": "Barely-Melted Capacitor (crafting item, not a cosmetic)",
+  "5616": "Voodoo-Cursed Soul (Armory) placeholder",
+  "1057-1065": "MvM GateBot lights, worn only by robots",
+  "30143-30161": "MvM robot armor and helmets, worn only by robots",
+  "1191-1194": "Unreleased Yeti Park hats (Jungle Inferno)"
+ },
+ "still_earnable": {
+  "116": "Ghastly Gibus, passed on by domination",
+  "279": "Ghastlier Gibus",
+  "584": "Ghastlierest Gibus",
+  "940": "Ghostly Gibus",
+  "242-245": "Dueling badges",
+  "711-713": "Dueler, Gifting Man, Philateler score rewards",
+  "726": "MvM Tour of Duty badge",
+  "870": "MvM Tour of Duty badge",
+  "871": "MvM Tour of Duty badge",
+  "975": "MvM Tour of Duty badge",
+  "1066": "MvM Tour of Duty badge",
+  "655": "Spirit of Giving",
+  "169": "Golden Wrench (the real ones trade)",
+  "537": "TF Birthday Hat, handed out every birthday",
+  "1158": "Finder's Fee, still awarded for exploit reports",
+  "5075": "Something Special For Someone Special",
+  "5617-5625": "Voodoo-Cursed Souls",
+  "470": "Lo-Fi Longwave",
+  "9229": "Altruist's Adornment (Random Acts of TF2 gifters, still handed out)",
+  "9731": "Philanthropist's Indulgence (Random Acts of TF2 gifters, still handed out)",
+  "1164": "Civilian Grade JACK Hat (PASS Time achievement)",
+  "1169": "Military Grade JACK Hat (PASS Time achievement)",
+  "1170": "PASS Time Miniature Half JACK (PASS Time achievement)",
+  "115": "Mildly Disturbing Halloween Mask (Halloween achievements, earnable during events)",
+  "1173": "Unusual Cap (Self-Made), still handed out"
+ },
+ "unobtainable": {
+  "727": "Black Rose (old promo, no longer available)",
+  "302": "Frontline Field Recorder (Replay/YouTube achievement no longer works)"
+ },
+ "fixed_dates": {
+  "5617-5625": "2013-10-28",
+  "5075": "2012-02-09"
+ },
+ "reskins": {
+  "741": "Rainblower (Flame Thrower with Pyrovision)",
+  "433": "Fishcake (Dalokohs Bar)",
+  "587": "Apoco-Fists (Fists)",
+  "863": "Robo-Sandvich (Sandvich)"
+ },
+ "not_reskins": {},
+ "not_genuine": {
+  "_note": "Community and tournament medals are treated as Genuine-only; list the exceptions here."
+ }
+}

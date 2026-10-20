@@ -1,0 +1,7 @@
+# Your personal data and caches never go in the repo
+userdata/
+__pycache__/
+*.pyc
+dist/
+build/
+*.spec
