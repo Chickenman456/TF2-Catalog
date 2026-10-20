@@ -284,6 +284,7 @@ main{padding-block:18px 80px;max-width:1520px;margin:0 auto}
       <button class="btn" type="button" data-show="all">All</button>
       <button class="btn" type="button" data-show="own">Owned</button>
       <button class="btn" type="button" data-show="miss">Missing</button>
+      <button class="btn" type="button" data-show="dupe" title="Items you own more than one of">Dupes</button>
     </div></div>
         <div class="fld"><span class="lbl">Availability</span><div class="seg" aria-label="Availability">
       <button class="btn" type="button" data-avail="any">Any</button>
@@ -300,7 +301,7 @@ main{padding-block:18px 80px;max-width:1520px;margin:0 auto}
       </div>
       <div class="frow">
         <div class="fld"><span class="lbl">Sort items by</span><select id="sort" class="in" aria-label="Sort items by">
-        <option value="grade">Grade</option><option value="class">Class</option><option value="region">Equip region</option><option value="name">Name</option>
+        <option value="grade">Grade</option><option value="class">Class</option><option value="region">Equip region</option><option value="copies">Most copies</option><option value="name">Name</option>
       </select></div>
         <div class="fld" id="orderFld"><span class="lbl">Section order</span><select id="order" class="in" aria-label="Section order"><option value="desc">Newest first</option><option value="asc">Oldest first</option></select></div>
       </div>
@@ -434,6 +435,7 @@ function visible(id){
   const o = owns(id);
   if (S.show==='own' && !o) return false;
   if (S.show==='miss' && o) return false;
+  if (S.show==='dupe' && o < 2) return false;
   if (S.avail === 'ob' && isUnob(id)) return false;
   if (S.avail === 'unob' && !isUnob(id)) return false;
   return true;
@@ -443,6 +445,7 @@ const SORTS = {
   class: (a,b) => (a.ckey - b.ckey) || a.name.localeCompare(b.name),
   year:  (a,b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name),
   name:  (a,b) => a.name.localeCompare(b.name),
+  copies:(a,b) => (owns(b.id) - owns(a.id)) || a.name.localeCompare(b.name),
   region:(a,b) => (!a.region - !b.region) || a.region.localeCompare(b.region) || a.name.localeCompare(b.name),
 };
 function sortIds(ids){ const f = SORTS[S.view === 'class' && S.sort === 'class' ? 'grade' : S.sort] || SORTS.grade; return ids.map(i => ITEMS[i]).sort(f).map(i => i.id); }
@@ -607,7 +610,7 @@ function activeFilters(){
   const f = [];
   if (S.quality) f.push(QUAL[S.quality].n + ' quality');
   if (S.cls !== '') f.push(+S.cls < 9 ? CLASSES[+S.cls] : (+S.cls === 9 ? 'Multi-class' : 'All-class'));
-  if (S.show === 'own') f.push('Owned'); if (S.show === 'miss') f.push('Missing');
+  if (S.show === 'own') f.push('Owned'); if (S.show === 'miss') f.push('Missing'); if (S.show === 'dupe') f.push('Duplicates');
   if (S.avail === 'ob') f.push('Obtainable'); if (S.avail === 'unob') f.push('Unobtainable');
   if (S.grade) f.push(S.grade === 'any' ? 'Any grade' : (+S.grade ? RAR[+S.grade].n : 'No grade'));
   if (S.hol === 'hide') f.push('No Halloween items'); if (S.hol === 'only') f.push('Halloween only');
@@ -657,17 +660,41 @@ document.addEventListener('click', e => {
     if (Math.abs(dy) > 6 || y <= 2) lastY = y;
   }
   addEventListener('scroll', () => { if (ticking) return; ticking = true; requestAnimationFrame(() => { update(); ticking = false; }); }, {passive:true}); }
-/* ---------------- TF2 UI sounds ---------------- */
-const SFX_BASE = 'sounds/', SFX_VOL = .35, sfxCache = {};
-let lastRoll = 0;
+/* ---------------- TF2 UI sounds ----------------
+   Played through Web Audio: decoded once, overlap freely, and unlocked on the first click or key
+   press (browsers keep page audio suspended until then, so a fresh page can't play on hover alone). */
+const SFX_BASE = 'sounds/', SFX_VOL = .35, sfxBuf = {}, sfxLoading = {};
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let actx = null, lastRoll = 0;
+function audio(){ if (!actx && AudioCtx){ try { actx = new AudioCtx(); } catch { actx = null; } } return actx; }
+function sfxLoad(name){
+  const c = audio(); if (!c) return Promise.resolve(null);
+  if (!sfxLoading[name]) sfxLoading[name] = fetch(SFX_BASE + name + '.mp3')
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+    .then(b => new Promise((res, rej) => c.decodeAudioData(b, res, rej)))
+    .then(buf => (sfxBuf[name] = buf))
+    .catch(() => { delete sfxLoading[name]; return null; });
+  return sfxLoading[name];
+}
 function sfx(name, vol = 1){
   if (S.mute || !name) return;
-  try {
-    let a = sfxCache[name];
-    if (!a){ a = sfxCache[name] = new Audio(SFX_BASE + name + '.mp3'); a.preload = 'auto'; }
-    const n = a.cloneNode(); n.volume = Math.min(1, SFX_VOL * vol); n.play().catch(() => {});
-  } catch {}
+  const c = audio(); if (!c) return;
+  if (c.state !== 'running') c.resume().catch(() => {});
+  const play = buf => {
+    if (!buf || c.state !== 'running') return;
+    try {
+      const src = c.createBufferSource(), g = c.createGain();
+      src.buffer = buf; g.gain.value = Math.min(1, SFX_VOL * vol);
+      src.connect(g); g.connect(c.destination); src.start();
+    } catch {}
+  };
+  if (sfxBuf[name]) play(sfxBuf[name]);
+  else { const t0 = performance.now(); sfxLoad(name).then(buf => { if (performance.now() - t0 < 400) play(buf); }); }
 }
+for (const ev of ['pointerdown', 'keydown', 'touchstart'])
+  addEventListener(ev, () => { const c = audio(); if (c && c.state !== 'running') c.resume().catch(() => {}); }, {capture: true, passive: true});
+// decode the everyday sounds up front so the first hover or click isn't silent
+for (const n of ['buttonclick','buttonclickrelease','buttonrollover','item_info_mouseover','panel_open','panel_close','slide_up','slide_down','mm_queue','item_acquired','item_hat_pickup','item_hat_drop']) sfxLoad(n);
 // each item's own backpack sound: picked up when you tick it off, dropped when you untick it
 function itemSound(id, pickup){
   const pair = (RAW.sounds || [])[ITEMS[id].snd];
