@@ -1,0 +1,28 @@
+# Builds the standalone Windows .exe (no Python needed) and attaches it to a GitHub release.
+# Runs by itself when you publish a release, or by hand: Actions tab > release > Run workflow.
+name: release
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to attach the .exe to (e.g. v1.0.0)"
+        required: true
+permissions:
+  contents: write
+jobs:
+  windows-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyinstaller==6.10.0
+      - run: pyinstaller --onefile --name TF2-Catalog --icon assets/tf2catalog.ico --add-data "web;web" --add-data "data;data" tf2_catalog.py
+      - run: Compress-Archive -Path dist/TF2-Catalog.exe -DestinationPath TF2-Catalog-windows.zip
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name || inputs.tag }}
+          files: TF2-Catalog-windows.zip
