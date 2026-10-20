@@ -1,0 +1,946 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TF2 Catalog</title>
+<link rel="icon" type="image/png" href="ui/favicon.png">
+<style>
+/* TF2 Catalog. Interface art and fonts are TF2's own (bundled under the Source SDK license);
+   item icons come from Steam's image servers, the TF2 Wiki, or a local TF2 install.
+   Layout: TF2 backpack screen. Sticky control strip (sync, views, filters) over stacked panels of backpack slots.
+   Colors, fonts, borders and art come from TF2's ClientScheme.res and the game's own vgui textures. */
+@font-face{font-family:"TF2 Build";src:url(/fonts/tf2build.ttf) format("truetype");font-display:swap}
+@font-face{font-family:"TF2 Secondary";src:url(/fonts/tf2secondary.ttf) format("truetype");font-display:swap}
+:root{
+  color-scheme:dark;
+  /* ClientScheme.res colors */
+  --TanLight:#EBE2CA;--TanDark:#756B5E;--TanDarker:#2E2B2A;--DarkBrown:#292526;--LighterDarkBrown:#3B3630;
+  --TFOrange:#91493B;--LightRed:#C8503C;--LighterRed:#DC6450;--CreditsGreen:#5E9631;
+  --AttribLevel:#756B5E;--AttribNeutral:#EBE2CA;--AttribPositive:#99CCFF;--AttribNegative:#FF4040;
+  --Unique:#FFD700;--Strange:#CF6A32;--Halloween:#EE7E11;--SetName:#E1FF0F;
+  --ink-2:#B9AE98;--ProgressFg:#FBEBCA;--ProgressBg:rgba(250,234,201,.2);
+  --head:"TF2 Build",Impact,"Arial Narrow",sans-serif;
+  --body:"TF2 Secondary",Verdana,Tahoma,sans-serif;
+  --is:78px;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--DarkBrown)}
+body{background:var(--DarkBrown) radial-gradient(ellipse 120% 70% at 50% 0%,#3D352E 0%,var(--DarkBrown) 70%) fixed;color:var(--TanLight);font-family:var(--body);font-size:14px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--TanDarker)}
+button,input,select{font:inherit;color:inherit}
+a{color:var(--Unique)}
+:focus-visible{outline:2px solid var(--Unique);outline-offset:2px}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.top{top:env(safe-area-inset-top,0px);z-index:20;background:var(--TanDarker);box-shadow:0 6px 14px #000a}
+.bar{display:flex;align-items:center;gap:14px;padding-block:12px;flex-wrap:wrap}
+/* BackpackTitle: HudFontMediumBold, TanLight */
+h1{font-family:var(--head);font-weight:400;font-size:30px;margin:0;text-transform:uppercase;line-height:1;letter-spacing:.01em}
+h1 small{display:block;font-size:12px;color:var(--TanDark);letter-spacing:.14em;margin-bottom:3px}
+.grow{flex:1;min-width:0}
+/* DarkComboBoxBorder / TextEntry */
+.in{background:#1F1C1B;border:1px solid var(--TanDark);border-radius:2px;padding:7px 9px;min-width:0;color:var(--TanLight)}
+.in::placeholder{color:var(--TanDark)}
+.in:focus{outline:none;border-color:var(--TanLight)}
+select.in{padding:6px 8px;font-family:var(--head);font-size:14px}
+/* Button.* : TanDark bg / TanLight text, armed + selected TFOrange, depressed TFOrange + Black text */
+.btn{font-family:var(--head);text-transform:uppercase;background:var(--TanDark);border:0;border-radius:4px;padding:8px 14px;cursor:pointer;color:var(--TanLight);font-size:16px;line-height:1;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn:hover,.btn.on{background:var(--TFOrange)}
+.btn:active{background:var(--TFOrange);color:var(--TanDarker)}
+/* Econ.Button.Preset* — the red "confirm" buttons */
+.btn.big{background:var(--LighterRed);font-size:19px;padding:9px 18px}
+.btn.big:hover{background:var(--LightRed)}
+.btn.big:active{background:var(--TFOrange)}
+.btn.big .spin{width:22px;height:22px;vertical-align:-5px;margin-right:6px;animation:tfspin 1.1s linear infinite}
+@keyframes tfspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.btn.big .spin{animation-duration:3s}}
+.btn.big.busy{background:var(--TanDark);cursor:progress;opacity:1}
+.btn.big.done{background:var(--CreditsGreen)}
+.status .good{display:inline-flex;align-items:center;gap:6px}
+.btn:disabled{opacity:.55;cursor:wait}
+.sync{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#sid{width:250px}
+.status{font-size:13px;color:var(--ink-2);min-height:17px;padding-block:0 8px}
+.status .err{color:var(--AttribNegative)}.status .good{color:var(--CreditsGreen)}
+.meter{display:flex;align-items:center;gap:10px;min-width:210px}
+.meter b{font-family:var(--head);font-weight:400;font-size:26px;font-variant-numeric:tabular-nums}
+.sub{font-size:12px;color:var(--ink-2)}
+.track{height:8px;background:var(--ProgressBg);border-radius:1px;overflow:hidden;flex:1}
+/* ProgressBar.FgColor / BgColor */
+.fill{height:100%;background:var(--ProgressFg)}
+.full .fill{background:var(--CreditsGreen)}
+.tools{display:flex;gap:8px 10px;align-items:center;flex-wrap:wrap;padding-block:9px;border-top:1px solid #4A443D}
+.tabs,.seg,.chips,.clsbar{display:flex;gap:4px;flex-wrap:wrap}
+.seg{gap:2px}
+.seg .btn{font-size:14px;padding:7px 11px}
+.tabs .btn{font-size:16px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--head);font-size:14px;text-transform:uppercase;padding:6px 10px;border-radius:4px;background:#1F1C1B;color:var(--TanDark);cursor:pointer;user-select:none;box-shadow:inset 0 0 0 1px var(--TanDark)}
+.chip input{position:absolute;opacity:0;pointer-events:none}
+.chip::before{content:"";width:9px;height:9px;border-radius:2px;box-shadow:inset 0 0 0 1px var(--TanDark)}
+.chip:has(input:checked){color:var(--TanLight);box-shadow:inset 0 0 0 1px var(--TanLight)}
+.chip:has(input:checked)::before{background:var(--CreditsGreen);box-shadow:none}
+.chip:has(input:focus-visible){outline:2px solid var(--Unique);outline-offset:2px}
+label.chk{display:flex;gap:6px;align-items:center;cursor:pointer;color:var(--ink-2);font-size:13px}
+label.chk input{accent-color:var(--TFOrange)}
+.search{width:220px}
+#filtBtn .caret{display:inline-block;margin-left:6px;transition:transform .15s}
+#filtBtn[aria-expanded="true"] .caret{transform:rotate(180deg)}
+#filtBtn[aria-expanded="true"]{background:var(--TFOrange);color:#fff}
+#fcount:not(:empty){margin-left:6px;background:var(--LighterRed);color:#fff;border-radius:9px;padding:0 6px;font-size:12px}
+.fsum{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding-block:0 9px;font-size:13px;color:var(--ink-2)}
+.fsum[hidden]{display:none}
+.fsum .ft{background:#1F1C1B;box-shadow:inset 0 0 0 1px var(--TanDark);border-radius:3px;padding:2px 8px;color:var(--TanLight)}
+.fsum .lk{background:none;border:0;color:var(--TFOrange);cursor:pointer;font:inherit;text-decoration:underline;padding:0 4px}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:12px;padding-block:12px;border-top:1px solid #4A443D}
+.fcol{background:#00000026;box-shadow:inset 0 0 0 1px #4A443D;border-radius:6px;padding:10px 12px 12px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.fcol h3{margin:0;font-family:var(--head);font-weight:400;font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--TanLight)}
+.fld{display:flex;flex-direction:column;gap:5px;min-width:0}
+.fld>.lbl{font-size:11px;letter-spacing:.1em;display:flex;align-items:center;gap:5px}
+.fld .in{width:100%}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fld .seg{flex-wrap:wrap}
+.fld .seg .btn{flex:1 1 auto;justify-content:center;text-align:center}
+.fld .qseg .btn{flex:0 0 auto}
+.fcol.stack .frow{grid-template-columns:1fr}
+.fld>.lbl .pk{width:14px;height:14px;background-size:contain}
+.checks{gap:6px}
+.checks .wopts{display:flex;flex-direction:column;gap:6px}
+.checks .wopts[hidden]{display:none}
+#qnote{font-size:12px;line-height:1.35}
+#qnote:empty{display:none}
+.ffoot{display:flex;justify-content:flex-end;gap:8px;padding-block:0 12px}
+.filters[hidden]{display:none}
+.filters .lbl{min-width:0}
+@media (max-width:700px){.search{width:100%;order:3}}
+.gi{display:inline-block;width:20px;height:20px;vertical-align:middle;background:currentColor;-webkit-mask:var(--g) center/contain no-repeat;mask:var(--g) center/contain no-repeat}
+.ibtn{display:inline-grid;place-items:center;padding-inline:10px}
+.wopts{display:contents}
+.chipgrp{display:inline-flex;gap:2px}
+.chipgrp .chip:first-child{border-radius:4px 0 0 4px}
+.chipgrp .chip.sub{border-radius:0 4px 4px 0;font-size:12px}
+.wopts[hidden]{display:none}
+.qseg .btn{box-shadow:inset 0 -3px 0 var(--qc,var(--TanLight))}
+.qseg .btn.on{background:var(--qc,var(--TFOrange));color:#fff;box-shadow:none}
+body[data-quality] .slot .nm{color:color-mix(in srgb,var(--qcol) 65%,#fff)}
+.lbl{font-family:var(--head);font-size:14px;text-transform:uppercase;color:var(--TanDark)}
+.pair{display:flex;align-items:center;gap:6px}
+/* class picker uses the scoreboard class emblems */
+.clsbar .btn{padding:4px 8px;min-height:32px;font-size:13px}
+.emb{width:24px;height:24px;background:url(/ui/emblems.webp) 0 0/216px 24px no-repeat;background-position-x:calc(var(--c)*-24px)}
+.pk{display:inline-block;width:22px;height:16px;background:url(/ui/pumpkin.webp) center/contain no-repeat}
+/* MainMenuHighlightBorder-style callout for the sync helper */
+.panel{border:0 solid transparent;border-image:url(/ui/button_holder_central.webp) 32 fill / 8px;padding:14px 16px;margin-block:10px 6px;display:flex;flex-direction:column;gap:8px}
+.panel ol{margin:0;padding-left:20px;line-height:1.6;color:var(--ink-2)}
+.panel b{color:var(--TanLight);font-family:var(--head);font-weight:400;text-transform:uppercase}
+.panel .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+kbd{background:#1F1C1B;border:1px solid var(--TanDark);border-radius:3px;padding:0 5px;font-size:12px;color:var(--TanLight)}
+main{padding-block:18px 80px;max-width:1520px;margin:0 auto}
+/* section = LoadoutItemPopupBorder / MainMenuBGBorder (button_holder_central) */
+.sec{border:0 solid transparent;border-image:url(/ui/button_holder_central.webp) 32 fill / 9px;margin-bottom:16px;content-visibility:auto;contain-intrinsic-size:auto 420px}
+.sh{display:flex;align-items:center;gap:12px;padding:12px 16px 8px;cursor:pointer;user-select:none;flex-wrap:wrap}
+.num{font-family:var(--head);color:var(--Unique);font-size:18px;min-width:52px;font-variant-numeric:tabular-nums}
+.sh h2{font-family:var(--head);font-weight:400;font-size:22px;margin:0;text-transform:uppercase;text-wrap:balance;line-height:1.05}
+.portrait{width:44px;height:66px;margin:-6px 0 -8px;background:url(/ui/classes.webp) 0 0/396px 66px no-repeat;background-position-x:calc(var(--c)*-44px);flex:none}
+.mini{width:150px;flex:none}
+.cnt{font-family:var(--head);font-size:19px;min-width:76px;text-align:right;font-variant-numeric:tabular-nums}
+.cnt.full{color:var(--CreditsGreen)}
+.tag{font-family:var(--head);font-size:13px;padding:3px 8px;border-radius:3px;text-transform:uppercase;background:var(--CreditsGreen);color:var(--TanLight)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(114px,1fr));gap:7px;padding:4px 14px 16px}
+.sec.closed .grid{display:none}
+/* backpack slots: BackpackItemBorder[_Rarity*] / GreyedOut / MouseOver, drawn from the game's scalable images */
+.slot{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:10px 6px 8px;min-height:134px;
+  border:0 solid transparent;border-image:url(/ui/backpack_rect.webp) 24 fill / 18px}
+.slot.miss{border-image:url(/ui/g_plain.webp) 24 fill / 18px}
+.slot:hover,.slot:focus-within{border-image:url(/ui/backpack_rect_mouseover.webp) 24 fill / 18px}
+.r-common{border-image:url(/ui/c_common.webp) 24 fill / 9px}.miss.r-common{border-image:url(/ui/g_common.webp) 24 fill / 9px}.r-common:hover,.r-common:focus-within{border-image:url(/ui/mo_common.webp) 24 fill / 9px}
+.r-uncommon{border-image:url(/ui/c_uncommon.webp) 24 fill / 9px}.miss.r-uncommon{border-image:url(/ui/g_uncommon.webp) 24 fill / 9px}.r-uncommon:hover,.r-uncommon:focus-within{border-image:url(/ui/mo_uncommon.webp) 24 fill / 9px}
+.r-rare{border-image:url(/ui/c_rare.webp) 24 fill / 9px}.miss.r-rare{border-image:url(/ui/g_rare.webp) 24 fill / 9px}.r-rare:hover,.r-rare:focus-within{border-image:url(/ui/mo_rare.webp) 24 fill / 9px}
+.r-mythical{border-image:url(/ui/c_mythical.webp) 24 fill / 9px}.miss.r-mythical{border-image:url(/ui/g_mythical.webp) 24 fill / 9px}.r-mythical:hover,.r-mythical:focus-within{border-image:url(/ui/mo_mythical.webp) 24 fill / 9px}
+.r-legendary{border-image:url(/ui/c_legendary.webp) 24 fill / 9px}.miss.r-legendary{border-image:url(/ui/g_legendary.webp) 24 fill / 9px}.r-legendary:hover,.r-legendary:focus-within{border-image:url(/ui/mo_legendary.webp) 24 fill / 9px}
+.r-ancient{border-image:url(/ui/c_ancient.webp) 24 fill / 9px}.miss.r-ancient{border-image:url(/ui/g_ancient.webp) 24 fill / 9px}.r-ancient:hover,.r-ancient:focus-within{border-image:url(/ui/mo_ancient.webp) 24 fill / 9px}
+.r-paintkit{border-image:url(/ui/c_paintkit.webp) 24 fill / 9px}.miss.r-paintkit{border-image:url(/ui/g_paintkit.webp) 24 fill / 9px}.r-paintkit:hover,.r-paintkit:focus-within{border-image:url(/ui/mo_paintkit.webp) 24 fill / 9px}
+.ico{width:var(--is);height:var(--is);object-fit:contain;flex:none}
+.ico:not([src]){visibility:hidden}
+.ph{width:calc(var(--is)*.8);height:calc(var(--is)*.8);border-radius:50%;background:#1B1817;display:grid;place-items:center;font-family:var(--head);font-size:11px;color:var(--TanDark);text-align:center;padding:6px;text-transform:uppercase;line-height:1.05;flex:none;overflow:hidden;overflow-wrap:anywhere}
+.nm{font-size:11.5px;line-height:1.15;text-align:center;color:var(--TanLight);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;padding-inline:4px}
+.slot.miss .ico{filter:grayscale(1) brightness(.45)}
+.slot.miss .nm{color:var(--TanDark)}
+.q{position:absolute;bottom:6px;right:9px;font-family:var(--head);font-size:13px;color:var(--TanLight)}
+.tick{position:absolute;top:6px;left:9px;color:var(--CreditsGreen);font-weight:700;font-size:15px;line-height:1;text-shadow:0 1px 0 #000}
+.unob{position:absolute;top:7px;left:9px;font-size:11px;font-family:var(--head);color:var(--AttribNegative);line-height:1}
+.slot.own .unob{left:26px}
+.links{position:absolute;left:5px;right:5px;bottom:7px;display:flex;justify-content:center;gap:4px;opacity:0;transition:opacity .1s}
+.links a{height:24px;padding:0 7px;border-radius:3px;background:var(--TanDark);color:var(--TanLight);font-family:var(--head);font-size:12px;text-transform:uppercase;display:grid;place-items:center;text-decoration:none}
+.links a:hover{background:var(--TFOrange)}
+.slot:hover .links,.slot:focus-within .links{opacity:1}
+.slot:hover .nm,.slot:hover .q,.slot:focus-within .nm,.slot:focus-within .q{visibility:hidden}
+.badges{position:absolute;top:6px;right:8px;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.badges .pk{width:20px;height:15px;filter:drop-shadow(0 1px 0 #000)}
+.wishmark{color:var(--Unique);font-size:14px;line-height:1;text-shadow:0 1px 0 #000}
+.acts{position:absolute;top:5px;right:5px;display:flex;flex-direction:column;gap:3px;opacity:0;transition:opacity .1s}
+.slot:hover .acts,.slot:focus-within .acts{opacity:1}
+.slot:hover .badges,.slot:focus-within .badges{opacity:0}
+.act{width:24px;height:24px;border-radius:3px;background:var(--TanDark);border:0;display:grid;place-items:center;font-size:12px;cursor:pointer;padding:0;color:var(--TanLight)}
+.act:hover{background:var(--TFOrange)}
+.act.on{background:var(--TFOrange);color:var(--Unique)}
+@media (hover:none){.acts{flex-direction:row}}
+/* item tooltip = CItemModelPanel mouseover with LoadoutItemPopupBorder; lines use the attrib colors */
+.tip{position:fixed;z-index:50;pointer-events:none;border:0 solid transparent;border-image:url(/ui/button_holder_central.webp) 32 fill / 9px;padding:14px 18px;width:310px;text-align:center;filter:drop-shadow(0 10px 18px #000c)}
+.tip .t{font-family:var(--head);font-size:21px;line-height:1.05;color:var(--Unique)}
+.tip .lv{font-size:13px;color:var(--AttribLevel);margin-top:3px}
+.tip .d{font-size:13px;color:var(--AttribNeutral);margin-top:8px;line-height:1.3;white-space:pre-line}
+.tip .neg{font-size:13px;color:var(--AttribNegative);margin-top:8px}
+.tip .lvl{font-size:13px;color:var(--AttribLevel);margin-top:8px}
+.tip .col{margin-top:10px;font-size:12px;line-height:1.35}
+.tip .col .h{color:var(--TanLight);font-family:var(--head);font-size:14px;margin-bottom:2px}
+.tip .col .cur{font-weight:700}
+.tip .col .cur::before{content:"» "}
+.tip .s{margin-top:10px;font-family:var(--head);font-size:15px}
+.empty{text-align:center;padding:60px 20px;color:var(--ink-2)}
+.disclaimer{max-width:900px;margin:8px auto 0;padding-block:18px 28px;text-align:center;font-size:12px;line-height:1.5;color:var(--TanDark);border-top:1px solid #4A443D}
+.disclaimer{display:flex;flex-direction:column;align-items:center;gap:8px}
+.disclaimer p{margin:0}
+.disclaimer .fine{font-size:11px;opacity:.75}
+.mannco{display:block;width:180px;max-width:60%;aspect-ratio:400/126;background:var(--TanDark);-webkit-mask:url(ui/mann_co_logo.webp) center/contain no-repeat;mask:url(ui/mann_co_logo.webp) center/contain no-repeat;margin-bottom:4px}
+.empty h2{font-family:var(--head);font-weight:400;color:var(--TanLight);font-size:28px;text-transform:uppercase;margin:0 0 8px}
+@media (max-width:640px){
+  :root{--is:58px}
+  h1{font-size:24px}
+  #sid{width:100%}
+  .sync{width:100%}
+  .mini{display:none}
+  .portrait{display:none}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(90px,1fr));padding:4px 10px 12px}
+  .slot{min-height:106px}
+  .acts{flex-direction:row;gap:2px}
+  .act{width:22px;height:22px}
+  .links{gap:2px;bottom:5px}
+  .links a{padding:0 4px;font-size:10px;height:20px}
+  .tip{width:260px}
+}
+/* the bar scrolls with the page at first; once you're past the first row of items it
+   follows you, tucked away while you scroll down and sliding back in when you scroll up */
+.top{position:relative}
+.top.follow{position:sticky;transition:transform .25s ease,opacity .25s ease}
+.top.follow.away{transform:translateY(calc(-100% - 12px));opacity:0;pointer-events:none}
+.top.notrans{transition:none!important}
+@media (prefers-reduced-motion:reduce){.top.follow{transition:opacity .2s}.top.follow.away{transform:none}}
+@media (prefers-reduced-motion:reduce){.acts{transition:none}}
+</style>
+</head><body>
+
+<div class="top">
+  <div class="bar gut">
+    <h1>TF2 Catalog</h1>
+    <div class="grow"></div>
+    <div class="sync">
+      <input id="sid" class="in" placeholder="Steam ID or profile link" aria-label="Steam ID or profile link" autocomplete="off" spellcheck="false">
+      <button id="syncBtn" class="btn big" type="button">Sync</button>
+      <button id="muteBtn" class="btn ibtn" type="button" title="Sound on" aria-label="Mute sounds" aria-pressed="false"><span class="gi" style="--g:url(ui/glyph_commentary.webp)"></span></button>
+      <button id="setBtn" class="btn ibtn" type="button" title="Where item data comes from" aria-label="Settings"><span class="gi" style="--g:url(ui/glyph_options.webp)"></span></button>
+    </div>
+    <div class="meter"><b id="pct">0%</b><div class="track"><div class="fill" id="pfill" style="width:0"></div></div><span id="ptxt" class="sub"></span></div>
+  </div>
+  <div class="status gut" id="status"></div>
+  <div class="tools gut">
+    <div class="tabs" role="tablist">
+      <button class="btn" type="button" data-view="class">By Class</button>
+      <button class="btn" type="button" data-view="year">By Year</button>
+      <button class="btn" type="button" data-view="case">Cases &amp; Collections</button>
+      <button class="btn" type="button" data-view="wishlist">★ Wishlist <span id="wcount"></span></button>
+    </div>
+    <div class="grow"></div>
+    <input id="q" class="in search" placeholder="Search items…" aria-label="Search items">
+    <button class="btn" id="filtBtn" type="button" aria-expanded="false" aria-controls="filters">Filters<span id="fcount"></span><span class="caret" aria-hidden="true">▾</span></button>
+  </div>
+  <div class="fsum gut" id="fsum" hidden></div>
+  <div class="filters" id="filters" hidden>
+   <div class="fgrid gut">
+    <section class="fcol" aria-label="What to collect">
+      <h3>What to collect</h3>
+      <div class="fld"><span class="lbl">Item types</span>
+      <div class="chips" aria-label="Item types">
+      <label class="chip"><input type="checkbox" data-type="c" checked>Cosmetics</label>
+      <label class="chip"><input type="checkbox" data-type="t" checked>Taunts</label>
+      <label class="chip"><input type="checkbox" data-type="w">Weapons</label>
+      <span class="chipgrp"><label class="chip"><input type="checkbox" data-type="p">War paints</label><label class="chip sub" title="Weapons that come with a war paint already applied"><input type="checkbox" data-type="d">Decorated weapons</label></span>
+      <label class="chip"><input type="checkbox" data-type="m">Community medals</label>
+    </div>
+      </div>
+      <div class="fld"><span class="lbl">Quality</span>
+      <div class="seg qseg" aria-label="Quality">
+        <button class="btn" type="button" data-q="" title="No quality filter: every item, owned in any quality">Any</button>
+        <button class="btn" type="button" data-q="vintage" style="--qc:#476291">Vintage</button>
+        <button class="btn" type="button" data-q="genuine" style="--qc:#4D7455">Genuine</button>
+        <button class="btn" type="button" data-q="strange" style="--qc:#CF6A32">Strange</button>
+        <button class="btn" type="button" data-q="haunted" style="--qc:#38F3AB">Haunted</button>
+        <button class="btn" type="button" data-q="collectors" style="--qc:#AA0000">Collector's</button>
+      </div>
+      <span class="sub" id="qnote"></span></div>
+    </section>
+    <section class="fcol stack" aria-label="Class and status">
+      <h3>Class &amp; status</h3>
+      <div class="fld"><span class="lbl">Class</span><div class="clsbar" id="clsbar" aria-label="Class filter"></div></div>
+      <div class="frow">
+        <div class="fld"><span class="lbl">Show</span><div class="seg">
+      <button class="btn" type="button" data-show="all">All</button>
+      <button class="btn" type="button" data-show="own">Owned</button>
+      <button class="btn" type="button" data-show="miss">Missing</button>
+    </div></div>
+        <div class="fld"><span class="lbl">Availability</span><div class="seg" aria-label="Availability">
+      <button class="btn" type="button" data-avail="any">Any</button>
+      <button class="btn" type="button" data-avail="ob">Obtainable</button>
+      <button class="btn" type="button" data-avail="unob">Unobtainable</button>
+    </div></div>
+      </div>
+    </section>
+    <section class="fcol" aria-label="Refine and sort">
+      <h3>Refine &amp; sort</h3>
+      <div class="frow">
+        <div class="fld"><span class="lbl">Grade</span><select id="grade" class="in" aria-label="Filter by grade"><option value="">All grades</option><option value="6" style="color:#EB4B4B">Elite</option><option value="5" style="color:#D32CE6">Assassin</option><option value="4" style="color:#8847FF">Commando</option><option value="3" style="color:#4B69FF">Mercenary</option><option value="2" style="color:#5E98D9">Freelance</option><option value="1" style="color:#B0C3D9">Civilian</option><option value="any">Any grade</option><option value="0">No grade</option></select></div>
+        <div class="fld"><span class="lbl"><span class="pk" aria-hidden="true"></span>Halloween</span><select id="hol" class="in" aria-label="Halloween / Full Moon restricted items"><option value="all">Include</option><option value="hide">Hide</option><option value="only">Only these</option></select></div>
+      </div>
+      <div class="frow">
+        <div class="fld"><span class="lbl">Sort items by</span><select id="sort" class="in" aria-label="Sort items by">
+        <option value="grade">Grade</option><option value="class">Class</option><option value="region">Equip region</option><option value="name">Name</option>
+      </select></div>
+        <div class="fld" id="orderFld"><span class="lbl">Section order</span><select id="order" class="in" aria-label="Section order"><option value="desc">Newest first</option><option value="asc">Oldest first</option></select></div>
+      </div>
+      <div class="fld checks">
+        <label class="chk" title="Only show items a single class can use"><input type="checkbox" id="solo"> Hide multi-class</label>
+        <label class="chk"><input type="checkbox" id="hidedone"> Hide completed</label>
+        <span class="wopts" id="wopts">
+      <label class="chk"><input type="checkbox" id="noresk"> Hide reskins</label>
+      <label class="chk"><input type="checkbox" id="nobk"> Hide Botkillers</label>
+      <label class="chk"><input type="checkbox" id="nofest"> Hide Festives</label>
+    </span>
+      </div>
+    </section>
+   </div>
+   <div class="ffoot gut"><button class="btn" id="resetBtn" type="button">Reset filters</button><button class="btn" id="closeBtn" type="button" data-fopen>Done</button></div>
+  </div>
+</div>
+<main id="main" class="gut"></main>
+<footer class="disclaimer gut">
+  <span class="mannco" role="img" aria-label="Mann Co."></span>
+  <p>Disclaimer: this is mostly AI slop, minus some code borrowed from the TF2 SDK. It was built mostly for my own convenience. Please forgive me.</p>
+  <p class="fine">Not affiliated with Valve.</p>
+</footer>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+"use strict";
+/* ---------------- catalog ---------------- */
+let RAW = null;
+const RAR = [null,
+  {n:'Civilian',c:'#B0C3D9'},{n:'Freelance',c:'#5E98D9'},{n:'Mercenary',c:'#4B69FF'},{n:'Commando',c:'#8847FF'},
+  {n:'Assassin',c:'#D32CE6'},{n:'Elite',c:'#EB4B4B'},{n:'Immortal',c:'#E4AE39'},{n:'Unusual',c:'#8650AC'}];
+const CLASSES = ['Scout','Soldier','Pyro','Demoman','Heavy','Engineer','Medic','Sniper','Spy'];
+const CATNAME = {c:'Cosmetic', t:'Taunt', w:'Weapon', m:'Medal', p:'War paint', d:'Decorated weapon'};
+const ITEMS = {}, COLS = {}, CASE_BY_COL = {}, NAMES = {};
+let ALL_IDS = [];
+const ALIAS = {}, VARIANTS = {};  // promo copies stored under a second defindex
+function initCatalog(raw){
+RAW = raw;
+for (let [id,name,type,cat,mask,rar,img,flags,date,desc,region,snd] of RAW.items){
+  if (flags&1) cat = flags&128 ? 'p' : 'd';  // war paints, and weapons that come painted, get their own sections
+  const classes = CLASSES.filter((_,i)=>mask>>i&1);
+  ITEMS[id] = {id, name, type, cat, mask, classes, rar, desc, region: region || '', snd: snd == null ? -1 : snd, img: RAW.imgs[img] || '',
+    warpaint: !!(flags&1), unob: !!(flags&2), untradable: !!(flags&4), holiday: !!(flags&8), reskin: !!(flags&16), botkiller: !!(flags&32), newfest: !!(flags&64), date, year: +date.slice(0,4),
+    ckey: classes.length===1 ? CLASSES.indexOf(classes[0]) : (classes.length===9 ? 10 : 9), cols: [], cases: []};
+  NAMES[name.toLowerCase()] = id;
+}
+for (const c of RAW.cases) (CASE_BY_COL[c.col] = CASE_BY_COL[c.col] || []).push(c);
+for (const c of RAW.cols){
+  COLS[c.id] = c;
+  for (const i of c.i){ const it = ITEMS[i]; if (!it) continue; it.cols.push(c.id); for (const cs of (CASE_BY_COL[c.id]||[])) it.cases.push(cs); }
+}
+ALL_IDS = Object.keys(ITEMS).map(Number);
+for (const [v, k] of Object.entries(RAW.alias || {})){ ALIAS[v] = k; (VARIANTS[k] = VARIANTS[k] || []).push(+v); }
+}
+
+/* ---------------- state ---------------- */
+const PREF_KEYS = ['view','show','types','sort','order','cls','hideunob','hidedone'];
+let S = {steamId:'', owned:{}, wishlist:[], manualOwned:[], manualMissing:[], override:{}, lastSync:'',
+         view:'class', show:'all', types:{c:true,t:true,w:false,m:false,p:false,d:false}, sort:'grade', order:'desc', cls:'', avail:'any', hidedone:false, hol:'all',
+         quality:'', qowned:{}, grade:'', fopen:false, solo:false, noresk:false, nobk:false, nofest:false};
+const QUAL = {vintage:{n:'Vintage',c:'#476291'}, genuine:{n:'Genuine',c:'#4D7455'}, strange:{n:'Strange',c:'#CF6A32'},
+              haunted:{n:'Haunted',c:'#38F3AB'}, collectors:{n:"Collector's",c:'#AA0000'}, unusual:{n:'Unusual',c:'#8650AC'},
+              selfmade:{n:'Self-Made',c:'#70B04A'}, community:{n:'Community',c:'#70B04A'}, valve:{n:'Valve',c:'#A50F79'}};
+const BUY_QUAL = ['vintage','genuine','strange','haunted','collectors','unusual'];  // qualities tracked from sync
+const QPOSS = {}; let NOMARKET = new Set(), ONLY = {};
+function initExtra(x){
+  for (const [q, ids] of Object.entries((x && x.q) || {})) QPOSS[q] = new Set(ids.map(i => +(ALIAS[i] || i)));
+  NOMARKET = new Set(((x && x.nomarket) || []).map(Number));
+  ONLY = {}; for (const [k, q] of Object.entries((x && x.only) || {})) if (QUAL[q]) ONLY[+(ALIAS[k] || k)] = q;
+}
+const closed = {};
+function $(s){ return document.querySelector(s); }
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function migrate(x){
+  if (x.hideunob) x.avail = 'ob';
+  if (typeof x.hol === 'boolean') x.hol = x.hol ? 'all' : 'hide';
+  if (x.sort === 'year') x.sort = 'grade';
+  if (x.nowp !== undefined && x.types && x.types.p === undefined){ x.types = {...x.types, p: !!(x.types && x.types.w) && !x.nowp}; delete x.nowp; }  // war paints used to ride along with weapons
+  if (x.view === 'collection') x.view = 'case';
+  if (x.quality && !QUAL[x.quality]) x.quality = '';
+  x.qowned = x.qowned || {};
+  if (!['all','hide','only'].includes(x.hol)) x.hol = 'all';
+  if (x.types && x.types.p !== undefined && x.types.d === undefined) x.types = {...x.types, d: x.types.p};
+  delete x.nowp; delete x.hideunob; return x;
+}
+function status(html){ $('#status').innerHTML = html; }
+
+let saveTimer = null;
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    fetch('/api/state', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(S)})
+      .catch(() => status('<span class="err">Couldn\'t save. Is the checklist app still running?</span>'));
+  }, 500);
+}
+
+/* ---------------- ownership & obtainability ---------------- */
+// manual ticks are per quality: 123 for the normal checklist, "vintage:123" for Vintage
+const mk = id => S.quality ? S.quality + ':' + id : id;
+function synced(id, q){
+  const src = q ? (S.qowned[q] || {}) : S.owned;
+  let n = src[id] || 0;
+  for (const v of VARIANTS[id] || []) n += src[v] || 0;
+  return n;
+}
+function owns(id){
+  const k = mk(id);
+  if (S.manualMissing.includes(k)) return 0;
+  return synced(id, S.quality) || (S.manualOwned.includes(k) ? 1 : 0);
+}
+function isUnob(id){ const o = S.override[String(id)]; return o === undefined ? ITEMS[id].unob : o; }
+
+/* ---------------- filtering & sorting ---------------- */
+function inScope(id){
+  const it = ITEMS[id]; if (!it || !S.types[it.cat]) return false;
+  if (S.solo && it.classes.length !== 1) return false;
+  if (S.grade === 'any' ? !it.rar : (S.grade !== '' && it.rar !== +S.grade)) return false;
+  if (S.noresk && it.reskin) return false;
+  if (S.nobk && it.botkiller) return false;
+  if (S.nofest && it.newfest) return false;
+  if (S.quality && !(QPOSS[S.quality] && QPOSS[S.quality].has(id)) && !synced(id, S.quality) && !S.manualOwned.includes(mk(id))) return false;
+  if (S.hol === 'hide' && it.holiday) return false;
+  if (S.hol === 'only' && !it.holiday) return false;
+  if (S.cls !== '' && it.ckey !== +S.cls && !(+S.cls < 9 && it.mask >> +S.cls & 1)) return false;
+  return true;
+}
+function visible(id){
+  const it = ITEMS[id], q = $('#q').value.trim().toLowerCase();
+  if (q && !it.name.toLowerCase().includes(q)) return false;
+  const o = owns(id);
+  if (S.show==='own' && !o) return false;
+  if (S.show==='miss' && o) return false;
+  if (S.avail === 'ob' && isUnob(id)) return false;
+  if (S.avail === 'unob' && !isUnob(id)) return false;
+  return true;
+}
+const SORTS = {
+  grade: (a,b) => (b.rar - a.rar) || a.name.localeCompare(b.name),
+  class: (a,b) => (a.ckey - b.ckey) || a.name.localeCompare(b.name),
+  year:  (a,b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name),
+  name:  (a,b) => a.name.localeCompare(b.name),
+  region:(a,b) => (!a.region - !b.region) || a.region.localeCompare(b.region) || a.name.localeCompare(b.name),
+};
+function sortIds(ids){ const f = SORTS[S.view === 'class' && S.sort === 'class' ? 'grade' : S.sort] || SORTS.grade; return ids.map(i => ITEMS[i]).sort(f).map(i => i.id); }
+
+/* ---------------- rendering ---------------- */
+let ICONMAP = {};
+function iconFor(id){
+  let u = ICONMAP[id];
+  if (!u) for (const v of VARIANTS[id] || []) if (ICONMAP[v]) { u = ICONMAP[v]; break; }
+  return u;
+}
+function iconHtml(it){
+  const u = iconFor(it.id);
+  if (u === 'local' && it.img){
+    const done = ICONS.get(it.img);
+    return done ? `<img class="ico" alt="" src="${done}">` : `<img class="ico" alt="" data-img="${esc(it.img)}">`;
+  }
+  if (u) return `<img class="ico" alt="" loading="lazy" referrerpolicy="no-referrer" src="${esc(u)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'?'}))">`;
+  return `<div class="ph">${esc((it.type||it.name).slice(0,20))}</div>`;
+}
+function marketable(it){ return !it.untradable && it.cat !== 'm' && !NOMARKET.has(it.id); }
+const RCLS = [null,'r-common','r-uncommon','r-rare','r-mythical','r-legendary','r-ancient','r-legendary','r-mythical'];
+function slot(id){
+  const it = ITEMS[id], o = owns(id), w = S.wishlist.includes(id), un = isUnob(id);
+  const rc = it.rar ? RCLS[it.rar] : (it.warpaint ? 'r-paintkit' : '');
+  return `<div class="slot ${o?'own':'miss'} ${rc}" data-id="${id}" tabindex="0">
+    ${iconHtml(it)}<div class="nm"${!S.quality && ONLY[id] ? ` style="color:${QUAL[ONLY[id]].c}" title="Only exists in ${QUAL[ONLY[id]].n} quality"` : ''}>${esc(it.name)}</div>
+    ${o?'<span class="tick" aria-label="Owned">✔</span>':''}${o>1?`<span class="q">×${o}</span>`:''}
+    ${un?'<span class="unob">UNOBTAINABLE</span>':''}
+    ${w||it.holiday?`<span class="badges">${w?'<span class="wishmark">★</span>':''}${it.holiday?'<span class="pk" title="Halloween / Full Moon restricted"></span>':''}</span>`:''}
+    <div class="links"><a href="https://wiki.teamfortress.com/scripts/itemredirect.php?id=${id}&lang=en_US" target="_blank" rel="noopener" title="Open on the TF2 Wiki">Wiki</a>${marketable(it) ? `<a href="https://steamcommunity.com/market/search?appid=440&q=${encodeURIComponent('"'+(S.quality ? QUAL[S.quality].n+' ' : '')+it.name+'"')}" target="_blank" rel="noopener" title="Search the Steam Community Market">Market</a>` : ''}</div>
+    <div class="acts">
+      <button class="act ${w?'on':''}" type="button" data-a="wish" title="${w?'Remove from':'Add to'} wishlist" aria-label="Wishlist">★</button>
+      <button class="act" type="button" data-a="own" title="${o?'Mark as not owned':'Mark as owned (held outside this backpack)'}" aria-label="Toggle owned">${o?'✕':'✔'}</button>
+      <button class="act" type="button" data-a="ret" title="${un?'Mark as obtainable':'Mark as unobtainable'}" aria-label="Toggle unobtainable">⛔</button>
+    </div></div>`;
+}
+function section(key, num, title, sub, ids, tag, lead){
+  ids = ids.filter(inScope);
+  const total = ids.length; if (!total) return '';
+  const got = ids.filter(owns).length, pct = Math.round(got*100/total);
+  if (S.hidedone && got === total) return '';
+  const vis = ids.filter(visible); if (!vis.length) return '';
+  return `<section class="sec ${closed[key]?'closed':''}" data-key="${esc(key)}">
+    <div class="sh">${lead||''}${num!==null?`<span class="num">${num}</span>`:''}
+      <div class="grow"><h2>${esc(title)}</h2><div class="sub">${esc(sub)}</div></div>
+      ${tag||''}<div class="track mini ${got===total?'full':''}"><div class="fill" style="width:${pct}%"></div></div>
+      <span class="cnt ${got===total?'full':''}">${got}/${total}</span></div>
+    <div class="grid">${sortIds(vis).map(slot).join('')}</div></section>`;
+}
+function groupBy(keyFn){ const g = new Map(); for (const id of ALL_IDS){ if (!inScope(id)) continue; const k = keyFn(ITEMS[id]); if (!g.has(k)) g.set(k, []); g.get(k).push(id); } return g; }
+function render(){
+  const desc = S.order === 'desc';
+  let html = '';
+  if (S.view === 'class'){
+    const g = groupBy(it => it.ckey);
+    const names = [...CLASSES, 'Multi-class', 'All-class'];
+    const subs = i => i < 9 ? 'Items only the '+CLASSES[i]+' can use' : (i===9 ? 'Shared by two to eight classes' : 'Every class can use these');
+    for (let i = 0; i <= 10; i++) if (g.has(i)) html += section('cl'+i, null, names[i], subs(i), g.get(i), '', i < 9 ? `<span class="portrait" style="--c:${i}" aria-hidden="true"></span>` : '');
+  } else if (S.view === 'year'){
+    const g = groupBy(it => it.year);
+    const ys = [...g.keys()].sort((a,b) => desc ? b-a : a-b);
+    for (const y of ys) html += section('y'+y, null, String(y), y <= 2010 ? 'Release years before 2011 are from TF2 update history' : 'Released in '+y, g.get(y));
+  } else if (S.view === 'case'){
+    // A case or crate unlocks one collection, so they share a section. Collections
+    // with no case (operations, contracts) and crates with no collection follow.
+    const top = c => Math.max(-1, ...(CASE_BY_COL[c.id]||[]).map(x => x.s));
+    const cols = RAW.cols.slice().sort((a,b) => (top(a) < 0) - (top(b) < 0) || (desc ? top(b)-top(a) : top(a)-top(b)) || a.n.localeCompare(b.n));
+    for (const c of cols){
+      const cs = (CASE_BY_COL[c.id]||[]).slice().sort((a,b) => a.s-b.s);
+      const nums = cs.map(x => '#'+x.s), live = cs.some(x => !x.r);
+      const title = c.k === 'crate' && cs.length ? cs[0].n : c.n;
+      const sub = !cs.length ? 'Operation or contract reward' : (c.k === 'crate' ? 'Crate series ' : (cs.length > 1 ? 'Cases ' : 'Case ')) + nums.join(', ') + (c.k !== 'crate' ? ' · ' + cs.map(x => x.n).filter((v,i,a) => a.indexOf(v) === i).join(', ') : '');
+      html += section('col'+c.id, cs.length ? nums[nums.length-1] : null, title, sub, c.i, '');
+    }
+  } else {
+    const ids = S.wishlist.filter(id => ITEMS[id]);
+    html = ids.length ? section('wish', null, 'Wishlist', 'Items you\'re hunting for', ids)
+      : '<div class="empty"><h2>Your wishlist is empty</h2><p>Hover any item and click ★ to add it here.</p></div>';
+  }
+  $('#main').innerHTML = html || '<div class="empty"><h2>Nothing matches</h2><p>Try turning on more item types, or change the filters.</p></div>';
+  if (S.quality){ document.body.dataset.quality = S.quality; document.body.style.setProperty('--qcol', QUAL[S.quality].c); }
+  else { delete document.body.dataset.quality; }
+  meter(); syncControls(); watchIcons();
+}
+function meter(){
+  const ids = ALL_IDS.filter(inScope), got = ids.filter(owns).length, pct = ids.length ? got*100/ids.length : 0;
+  $('#pct').textContent = pct.toFixed(pct<10?1:0)+'%';
+  $('#pfill').style.width = pct+'%';
+  $('#ptxt').textContent = got.toLocaleString()+' / '+ids.length.toLocaleString();
+  $('#wcount').textContent = S.wishlist.length ? '('+S.wishlist.length+')' : '';
+}
+function syncControls(){
+  document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === S.view));
+  document.querySelectorAll('[data-show]').forEach(b => b.classList.toggle('on', b.dataset.show === S.show));
+  document.querySelectorAll('[data-type]').forEach(c => { c.checked = !!S.types[c.dataset.type]; });
+  $('#sort').value = S.sort; $('#order').value = S.order;
+  document.querySelectorAll('[data-cls]').forEach(b => b.classList.toggle('on', b.dataset.cls === String(S.cls)));
+  document.querySelectorAll('[data-avail]').forEach(b => b.classList.toggle('on', b.dataset.avail === S.avail));
+  $('#hidedone').checked = S.hidedone; $('#hol').value = S.hol;
+  for (const k of ['solo','noresk','nobk','nofest']) $('#'+k).checked = !!S[k];
+  $('#grade').value = S.grade || '';
+  syncMute();
+  filterSummary();
+  $('#grade').style.color = S.grade && RAR[+S.grade] ? RAR[+S.grade].c : '';
+  $('#wopts').hidden = !S.types.w;
+  document.querySelectorAll('.qseg [data-q]').forEach(b => b.classList.toggle('on', b.dataset.q === S.quality));
+  $('#sort option[value="class"]').hidden = S.view === 'class';
+  if (S.view === 'class' && S.sort === 'class') $('#sort').value = 'grade';
+  const qn = S.quality && QPOSS[S.quality] ? QPOSS[S.quality].size : 0;
+  $('#qnote').textContent = S.quality ? `Every item that exists in ${QUAL[S.quality].n} quality (${qn.toLocaleString()} known, from the TF2 Wiki). Sync to tick off the ones you have.` : '';
+  $('#orderFld').hidden = S.view === 'class' || S.view === 'wishlist';
+}
+
+/* ---------------- interaction ---------------- */
+document.addEventListener('click', e => {
+  const t = e.target;
+  const tab = t.closest('[data-view]'); if (tab){ S.view = tab.dataset.view; save(); render(); return; }
+  const qb = t.closest('.qseg [data-q]'); if (qb){ S.quality = qb.dataset.q; save(); render(); return; }
+  const sh = t.closest('[data-show]'); if (sh){ S.show = sh.dataset.show; save(); render(); return; }
+  const cb = t.closest('[data-cls]'); if (cb){ S.cls = cb.dataset.cls; save(); render(); return; }
+  const av = t.closest('[data-avail]'); if (av){ S.avail = av.dataset.avail; save(); render(); return; }
+  const act = t.closest('.act');
+  if (act){
+    const id = +act.closest('.slot').dataset.id, a = act.dataset.a;
+    const secKey = act.closest('.sec') && act.closest('.sec').dataset.key;
+    const wasFull = secKey && !!document.querySelector(`.sec[data-key="${CSS.escape(secKey)}"] .cnt.full`);
+    if (a === 'wish'){ const add = !S.wishlist.includes(id); S.wishlist = add ? [...S.wishlist, id] : S.wishlist.filter(x => x!==id); sfx(add ? 'item_store_add_to_cart' : 'buttonclickrelease', add ? .5 : 1); }
+    if (a === 'own'){
+      const had = owns(id), k = mk(id), got = synced(id, S.quality);
+      S.manualOwned = S.manualOwned.filter(x => x!==k); S.manualMissing = S.manualMissing.filter(x => x!==k);
+      if (had && got) S.manualMissing.push(k);
+      else if (!had && !got) S.manualOwned.push(k);
+      itemSound(id, !had);
+    }
+    if (a === 'ret'){ const v = !isUnob(id); if (v === ITEMS[id].unob) delete S.override[String(id)]; else S.override[String(id)] = v; sfx('trade_changed'); }
+    save(); render();
+    if (a === 'own' && secKey && !wasFull && document.querySelector(`.sec[data-key="${CSS.escape(secKey)}"] .cnt.full`)) setTimeout(() => sfx('scored'), 250);
+    return;
+  }
+  const head = t.closest('.sh');
+  if (head){ const s = head.parentElement; closed[s.dataset.key] = !s.classList.contains('closed'); s.classList.toggle('closed'); }
+});
+document.querySelectorAll('[data-type]').forEach(c => c.addEventListener('change', () => { S.types = {...S.types, [c.dataset.type]: c.checked}; save(); render(); }));
+$('#sort').addEventListener('change', () => { S.sort = $('#sort').value; save(); render(); });
+$('#order').addEventListener('change', () => { S.order = $('#order').value; save(); render(); });
+
+$('#hidedone').addEventListener('change', () => { S.hidedone = $('#hidedone').checked; save(); render(); });
+$('#hol').addEventListener('change', () => { S.hol = $('#hol').value; save(); render(); });
+$('#grade').addEventListener('change', () => { S.grade = $('#grade').value; save(); render(); });
+for (const k of ['solo','noresk','nobk','nofest']) $('#'+k).addEventListener('change', () => { S[k] = $('#'+k).checked; save(); render(); });
+let qTimer; $('#q').addEventListener('input', () => { clearTimeout(qTimer); qTimer = setTimeout(render, 150); });
+
+function ownedQualities(id){
+  const have = BUY_QUAL.filter(q => synced(id, q) || S.manualOwned.includes(q+':'+id));
+  const can = BUY_QUAL.filter(q => QPOSS[q] && QPOSS[q].has(id) && !have.includes(q));
+  if (!have.length && !can.length) return '';
+  return `<div class="lvl">${have.length ? 'You have: ' + have.map(q => `<b style="color:${QUAL[q].c}">${QUAL[q].n}</b>`).join(', ') : ''}${have.length && can.length ? '<br>' : ''}${can.length ? 'Also exists as: ' + can.map(q => `<span style="color:${QUAL[q].c}">${QUAL[q].n}</span>`).join(', ') : ''}</div>`;
+}
+/* the filter panel: collapsed by default, with a one-line summary of what's active */
+function activeFilters(){
+  const f = [];
+  if (S.quality) f.push(QUAL[S.quality].n + ' quality');
+  if (S.cls !== '') f.push(+S.cls < 9 ? CLASSES[+S.cls] : (+S.cls === 9 ? 'Multi-class' : 'All-class'));
+  if (S.show === 'own') f.push('Owned'); if (S.show === 'miss') f.push('Missing');
+  if (S.avail === 'ob') f.push('Obtainable'); if (S.avail === 'unob') f.push('Unobtainable');
+  if (S.grade) f.push(S.grade === 'any' ? 'Any grade' : (+S.grade ? RAR[+S.grade].n : 'No grade'));
+  if (S.hol === 'hide') f.push('No Halloween items'); if (S.hol === 'only') f.push('Halloween only');
+  if (S.solo) f.push('No multi-class');
+  if (S.types.w && S.noresk) f.push('No reskins'); if (S.types.w && S.nobk) f.push('No Botkillers'); if (S.types.w && S.nofest) f.push('No Festives');
+  if (S.hidedone) f.push('Hiding completed');
+  return f;
+}
+function filterSummary(){
+  const f = activeFilters(), open = !!S.fopen;
+  $('#filters').hidden = !open;
+  $('#filtBtn').setAttribute('aria-expanded', String(open));
+  $('#fcount').textContent = f.length ? String(f.length) : '';
+  const types = Object.keys(CATNAME).filter(k => S.types[k]).map(k => ({c:'Cosmetics',t:'Taunts',w:'Weapons',m:'Medals',p:'War paints',d:'Decorated'})[k]);
+  $('#fsum').hidden = open;
+  $('#fsum').innerHTML = `<span>Collecting</span><span class="ft">${esc(types.join(', ') || 'nothing')}</span>` +
+    f.map(x => `<span class="ft">${esc(x)}</span>`).join('') +
+    `<button class="lk" type="button" data-fopen>Change</button>` + (f.length ? `<button class="lk" type="button" data-freset>Reset</button>` : '');
+}
+function resetFilters(){
+  Object.assign(S, {quality:'', cls:'', show:'all', avail:'any', grade:'', hol:'all', solo:false, noresk:false, nobk:false, nofest:false, hidedone:false});
+  save(); render();
+}
+document.addEventListener('click', e => {
+  if (e.target.closest('#filtBtn, [data-fopen]')){ S.fopen = !S.fopen; save(); filterSummary(); }
+  else if (e.target.closest('#resetBtn, [data-freset]')) resetFilters();
+});
+{ let ticking = false, lastY = scrollY;
+  const bar = () => document.querySelector('.top');
+  function update(){
+    const top = bar(), y = scrollY, dy = y - lastY, h = top.offsetHeight;
+    const first = document.querySelector('#main .slot') || document.querySelector('#main .sec, #main .empty');
+    const past = y > h && (!first || first.getBoundingClientRect().bottom + (top.classList.contains('follow') ? 0 : h) < h + 1);
+    const busy = top.contains(document.activeElement) && document.activeElement.matches('input,select');
+    const follow = top.classList.contains('follow');
+    if (y <= 2){ top.classList.remove('follow', 'away'); }
+    else if (!follow){
+      if (past){  // start following, hidden; no slide animation since it was off screen anyway
+        top.classList.add('notrans', 'follow', 'away'); void top.offsetHeight;
+        requestAnimationFrame(() => top.classList.remove('notrans'));
+      }
+    } else if (busy || dy < -6){ top.classList.remove('away'); }
+    else if (dy > 6){
+      if (y > h){ top.classList.add('away'); tip.hidden = true; }
+      else top.classList.remove('follow', 'away');   // back near the top: just scroll with the page
+    }
+    if (Math.abs(dy) > 6 || y <= 2) lastY = y;
+  }
+  addEventListener('scroll', () => { if (ticking) return; ticking = true; requestAnimationFrame(() => { update(); ticking = false; }); }, {passive:true}); }
+/* ---------------- TF2 UI sounds ---------------- */
+const SFX_BASE = 'sounds/', SFX_VOL = .35, sfxCache = {};
+let lastRoll = 0;
+function sfx(name, vol = 1){
+  if (S.mute || !name) return;
+  try {
+    let a = sfxCache[name];
+    if (!a){ a = sfxCache[name] = new Audio(SFX_BASE + name + '.mp3'); a.preload = 'auto'; }
+    const n = a.cloneNode(); n.volume = Math.min(1, SFX_VOL * vol); n.play().catch(() => {});
+  } catch {}
+}
+// each item's own backpack sound: picked up when you tick it off, dropped when you untick it
+function itemSound(id, pickup){
+  const pair = (RAW.sounds || [])[ITEMS[id].snd];
+  sfx(pair ? pair[pickup ? 0 : 1] : (pickup ? 'item_default_pickup' : 'item_default_drop'));
+}
+function syncMute(){ const b = $('#muteBtn'); b.firstElementChild.style.setProperty('--g', `url(ui/${S.mute ? 'glyph_muted' : 'glyph_commentary'}.webp)`); b.title = S.mute ? 'Sound off' : 'Sound on'; b.setAttribute('aria-pressed', String(!!S.mute)); }
+document.addEventListener('click', e => {
+  const t = e.target;
+  if (t.closest('#muteBtn')){ S.mute = !S.mute; save(); syncMute(); sfx('buttonclick'); return; }
+  if (t.closest('.act, .links a')) return;   // these play their own sounds
+  if (t.closest('#filtBtn, [data-fopen]')){ sfx(S.fopen ? 'panel_close' : 'panel_open'); return; }
+  const head = t.closest('.sh'); if (head){ sfx(head.parentElement.classList.contains('closed') ? 'slide_down' : 'slide_up', .8); return; }
+  if (t.closest('.btn, .chip, .links a')) sfx('buttonclick', .8);
+}, true);
+document.addEventListener('change', e => { if (e.target.matches('select, input[type=checkbox]') && !e.target.closest('.chip')) sfx('buttonclickrelease', .8); });
+document.addEventListener('mouseover', e => {
+  const el = e.target.closest('.btn, .chip, .act, .links a, .slot');
+  if (!el || el.contains(e.relatedTarget)) return;
+  const now = performance.now(); if (now - lastRoll < 45) return; lastRoll = now;
+  sfx(el.classList.contains('slot') ? 'item_info_mouseover' : 'buttonrollover', el.classList.contains('slot') ? .6 : .7);
+});
+const tip = $('#tip');
+document.addEventListener('mousemove', e => {
+  const s = e.target.closest('.slot');
+  if (!s || e.target.closest('.acts, .links')) { tip.hidden = true; return; }
+  const id = +s.dataset.id, it = ITEMS[id], r = it.rar ? RAR[it.rar] : null, o = owns(id);
+  const who = it.classes.length === 9 ? 'All classes' : it.classes.join(', ');
+  const why = isUnob(id) ? (S.override[String(id)] !== undefined ? 'You marked this unobtainable' : (it.cat==='m' ? 'Event or tournament medal, can\'t be traded' : 'Can\'t be traded and is no longer given out')) : (it.untradable ? 'Not tradable, but still earnable' : '');
+  const now = new Date(), halloween = (now.getMonth() === 9) || (now.getMonth() === 10 && now.getDate() <= 7);
+  let colHtml = '';
+  const col = it.cols.map(c => COLS[c]).find(c => c && c.k === 'collection') || it.cols.map(c => COLS[c])[0];
+  if (col){
+    const list = col.i.map(i => ITEMS[i]).filter(Boolean).sort((a,b) => (b.rar - a.rar) || a.name.localeCompare(b.name)).slice(0, 24);
+    colHtml = `<div class="col"><div class="h">${esc(col.n)}</div>${list.map(x => `<div class="${x.id===id?'cur':''}" style="color:${x.rar?RAR[x.rar].c:'var(--AttribNeutral)'}">${esc(x.name)}</div>`).join('')}</div>`;
+  }
+  const tq = S.quality || ONLY[id] || '';
+  tip.innerHTML = `<div class="t" style="${tq ? 'color:'+QUAL[tq].c : (it.warpaint?'color:#FAFAFA':'')}">${tq ? esc(QUAL[tq].n)+' ' : ''}${esc(it.name)}</div>
+    <div class="lv" style="${r?'color:'+r.c:''}">${r?esc(r.n)+' Grade ':''}${esc(it.type||CATNAME[it.cat])}</div>
+    ${it.desc ? `<div class="d">${esc(it.desc)}</div>` : ''}
+    ${it.holiday ? `<div class="${halloween?'lvl':'neg'}">Holiday Restriction: Halloween / Full Moon</div>` : ''}
+    ${it.untradable ? '<div class="lvl">( Not Tradable )</div>' : ''}
+    ${colHtml}
+    ${it.region ? `<div class="lvl">Equip region: ${esc(it.region)}</div>` : ''}
+    <div class="lvl">${esc(who)}${who?' · ':''}Released ${esc(it.date.length>4 ? new Date(it.date+'T00:00:00').toLocaleDateString(undefined,{year:'numeric',month:'short'}) : it.date)}</div>
+    ${why ? `<div class="${isUnob(id)?'neg':'lvl'}">${esc(why)}</div>` : ''}
+    ${ownedQualities(id)}
+    <div class="s" style="color:${o?'var(--CreditsGreen)':'var(--AttribNegative)'}">${o?'IN YOUR BACKPACK'+(o>1?' ×'+o:''):'NOT OWNED'}</div>`;
+  tip.hidden = false;
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = e.clientX+16, y = e.clientY+16;
+  if (x+w > innerWidth-8) x = e.clientX-w-16;
+  if (y+h > innerHeight-8) y = e.clientY-h-16;
+  tip.style.left = Math.max(8,x)+'px'; tip.style.top = Math.max(8,y)+'px';
+});
+
+/* ---------------- Steam sync (the local app talks to Steam) ---------------- */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const TF_LOGO = 'data:image/webp;base64,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';
+function syncBusy(on, label, quiet){
+  const b = $('#syncBtn');
+  if (!on && !quiet && b.classList.contains('busy')) sfx('trade_failure', .6);
+  if (on && !b.classList.contains('busy')) sfx('mm_queue', .6);   // the casual matchmaking "searching" sound b.disabled = on; b.classList.remove('done'); b.classList.toggle('busy', on);
+  b.innerHTML = on ? `<img class="spin" src="${TF_LOGO}" alt="">${label || 'Syncing'}` : 'Sync';
+}
+function syncDone(){
+  sfx('item_acquired', .7);
+  const b = $('#syncBtn'); b.disabled = false; b.classList.remove('busy'); b.classList.add('done'); b.innerHTML = '\u2714 Synced';
+  clearTimeout(syncDone.t); syncDone.t = setTimeout(() => { b.classList.remove('done'); b.innerHTML = 'Sync'; }, 5000);
+}
+
+async function pollJob(stop){
+  while (!stop.done){
+    try { const j = await (await fetch('/api/status')).json(); if (j.job && j.job.msg && !stop.done) status(esc(j.job.msg)+'…'); } catch {}
+    await sleep(700);
+  }
+}
+async function doSync(){
+  const raw = $('#sid').value.trim() || S.steamId;
+  if (!raw){ status('<span class="err">Enter a Steam ID, custom URL name or profile link first.</span>'); $('#sid').focus(); return; }
+  let ok = false; syncBusy(true); status('Contacting Steam…');
+  const stop = {done:false}; pollJob(stop);
+  try {
+    const r = await fetch('/api/sync', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id: raw})});
+    const j = await r.json();
+    stop.done = true;
+    if (!r.ok){ status('<span class="err">'+esc(j.error || 'Sync failed.')+'</span>'); return; }
+    S.owned = j.owned; S.qowned = j.quality || {}; S.steamId = raw; S.lastSync = new Date().toLocaleString(); save();
+    await loadIconMap();
+    const tracked = Object.keys(j.owned).filter(id => ITEMS[id] || ALIAS[id]).length;
+    status(`<span class="good">✔ Finished syncing ${j.total.toLocaleString()} backpack items. ${tracked.toLocaleString()} different collectibles ticked off.</span>`);
+    ok = true; syncDone();
+    render();
+  } catch (e) {
+    stop.done = true; status('<span class="err">The checklist app isn\'t responding. Is it still running?</span>');
+  } finally { if (!ok) syncBusy(false); }
+}
+$('#syncBtn').onclick = doSync;
+$('#sid').addEventListener('keydown', e => { if (e.key === 'Enter') doSync(); });
+
+/* ---------------- TF2 textures, decoded in the browser ---------------- */
+const FMT = {0:{b:4},1:{b:4},2:{b:3},3:{b:3},12:{b:4},16:{b:4},13:{dxt:8},14:{dxt:16},15:{dxt:16}};
+function mipBytes(fmt, w, h){
+  const f = FMT[fmt]; if (!f) return -1;
+  return f.dxt ? Math.max(1,Math.ceil(w/4))*Math.max(1,Math.ceil(h/4))*f.dxt : w*h*f.b;
+}
+function c565(v){ return [((v>>11)&31)*255/31|0, ((v>>5)&63)*255/63|0, (v&31)*255/31|0]; }
+function decodeDXT(src, w, h, kind){
+  const out = new Uint8ClampedArray(w*h*4), bw = Math.max(1,Math.ceil(w/4)), bh = Math.max(1,Math.ceil(h/4));
+  const blk = kind === 13 ? 8 : 16; let p = 0;
+  for (let by = 0; by < bh; by++) for (let bx = 0; bx < bw; bx++, p += blk){
+    let alpha = null;
+    if (kind === 15){
+      const a0 = src[p], a1 = src[p+1], tbl = [a0,a1];
+      if (a0 > a1) for (let i=1;i<7;i++) tbl.push(((7-i)*a0 + i*a1)/7|0);
+      else { for (let i=1;i<5;i++) tbl.push(((5-i)*a0 + i*a1)/5|0); tbl.push(0,255); }
+      alpha = new Uint8Array(16);
+      const lo = src[p+2] | src[p+3]<<8 | src[p+4]<<16, hi = src[p+5] | src[p+6]<<8 | src[p+7]<<16;
+      for (let i=0;i<8;i++){ alpha[i] = tbl[(lo >> (3*i)) & 7]; alpha[i+8] = tbl[(hi >> (3*i)) & 7]; }
+    } else if (kind === 14){
+      alpha = new Uint8Array(16);
+      for (let i=0;i<16;i++) alpha[i] = ((src[p+(i>>1)] >> ((i&1)*4)) & 15) * 17;
+    }
+    const c = kind === 13 ? p : p+8;
+    const v0 = src[c] | src[c+1]<<8, v1 = src[c+2] | src[c+3]<<8;
+    const k0 = c565(v0), k1 = c565(v1), col = [k0, k1];
+    if (v0 > v1 || kind !== 13){
+      col.push(k0.map((x,i)=>(2*x+k1[i])/3|0), k0.map((x,i)=>(x+2*k1[i])/3|0));
+    } else { col.push(k0.map((x,i)=>(x+k1[i])/2|0), [0,0,0]); }
+    const idx = src[c+4] | src[c+5]<<8 | src[c+6]<<16 | src[c+7]<<24;
+    for (let i=0;i<16;i++){
+      const x = bx*4 + (i&3), y = by*4 + (i>>2); if (x>=w || y>=h) continue;
+      const ci = (idx >>> (2*i)) & 3, o = (y*w + x)*4, k = col[ci];
+      out[o]=k[0]; out[o+1]=k[1]; out[o+2]=k[2];
+      out[o+3] = alpha ? alpha[i] : (kind===13 && v0<=v1 && ci===3 ? 0 : 255);
+    }
+  }
+  return out;
+}
+function decodeRaw(src, w, h, fmt){
+  const out = new Uint8ClampedArray(w*h*4), b = FMT[fmt].b;
+  for (let i=0, p=0; i<w*h; i++, p+=b){
+    let r,g,bl,a=255;
+    if (fmt===0){ r=src[p];g=src[p+1];bl=src[p+2];a=src[p+3]; }
+    else if (fmt===1){ a=src[p];bl=src[p+1];g=src[p+2];r=src[p+3]; }
+    else if (fmt===2){ r=src[p];g=src[p+1];bl=src[p+2]; }
+    else if (fmt===3){ bl=src[p];g=src[p+1];r=src[p+2]; }
+    else { bl=src[p];g=src[p+1];r=src[p+2];a=fmt===16?255:src[p+3]; }
+    out[i*4]=r;out[i*4+1]=g;out[i*4+2]=bl;out[i*4+3]=a;
+  }
+  return out;
+}
+/** Decode a VTF to the largest mip that is at most `maxw` px wide. */
+function decodeVTF(buf, maxw=128){
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  if (dv.getUint32(0,true) !== 0x00465456) throw new Error('not a VTF');
+  const minor = dv.getUint32(8,true), hdr = dv.getUint32(12,true);
+  const W = dv.getUint16(16,true), H = dv.getUint16(18,true), frames = Math.max(1, dv.getUint16(24,true));
+  const fmt = dv.getInt32(52,true), mips = buf[56], lfmt = dv.getInt32(57,true), lw = buf[61], lh = buf[62];
+  if (!FMT[fmt]) throw new Error('format '+fmt);
+  let hi = -1;
+  if (minor >= 3){
+    const n = dv.getUint32(68,true);
+    for (let i=0;i<n;i++){ const o = 80+i*8; if (buf[o]===0x30 && buf[o+1]===0 && buf[o+2]===0) hi = dv.getUint32(o+4,true); }
+  }
+  if (hi < 0) hi = hdr + (lfmt >= 0 && lw ? mipBytes(lfmt, lw, lh) : 0);
+  let level = 0; while (level < mips-1 && (W>>level) > maxw) level++;
+  let off = hi;
+  for (let m = mips-1; m > level; m--) off += mipBytes(fmt, Math.max(1,W>>m), Math.max(1,H>>m)) * frames;
+  const w = Math.max(1,W>>level), h = Math.max(1,H>>level), size = mipBytes(fmt,w,h);
+  const src = buf.subarray(off, off+size);
+  if (src.length < size) throw new Error('truncated');
+  const px = FMT[fmt].dxt ? decodeDXT(src,w,h,fmt) : decodeRaw(src,w,h,fmt);
+  return new ImageData(px, w, h);
+}
+async function loadTex(path, maxw){
+  const r = await fetch('/game/materials/' + path + '.vtf');
+  if (!r.ok) throw new Error('missing ' + path);
+  return decodeVTF(new Uint8Array(await r.arrayBuffer()), maxw);
+}
+function canvasOf(img){ const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; c.getContext('2d').putImageData(img, 0, 0); return c; }
+const blobURL = c => new Promise(res => c.toBlob(b => res(URL.createObjectURL(b)), 'image/png'));
+function tinted(img, rgb){
+  const d = new ImageData(new Uint8ClampedArray(img.data), img.width, img.height);
+  for (let i = 0; i < d.data.length; i += 4){ d.data[i] = d.data[i]*rgb[0]/255; d.data[i+1] = d.data[i+1]*rgb[1]/255; d.data[i+2] = d.data[i+2]*rgb[2]/255; }
+  return d;
+}
+/* item icons: decoded on demand as they scroll into view, kept in IndexedDB */
+const ICONS = new Map(), pending = new Set();
+let iconDB = null;
+function openIconDB(){
+  return new Promise(res => {
+    try { const r = indexedDB.open('tf2-checklist-icons', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('icons');
+      r.onsuccess = () => res(r.result); r.onerror = () => res(null);
+    } catch { res(null); }
+  });
+}
+function idbGet(k){ return new Promise(res => { try { const q = iconDB.transaction('icons').objectStore('icons').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(null); } catch { res(null); } }); }
+function idbPut(k, v){ try { iconDB.transaction('icons','readwrite').objectStore('icons').put(v, k); } catch {} }
+async function iconURL(path){
+  if (ICONS.has(path)) return ICONS.get(path);
+  const key = RAW.sig + '|' + path;
+  let blob = iconDB ? await idbGet(key) : null;
+  if (!blob){
+    const c = canvasOf(await loadTex(path, 128));
+    blob = await new Promise(res => c.toBlob(res, 'image/png'));
+    if (iconDB && blob) idbPut(key, blob);
+  }
+  const u = URL.createObjectURL(blob); ICONS.set(path, u); return u;
+}
+const io = 'IntersectionObserver' in window ? new IntersectionObserver(entries => {
+  for (const e of entries){
+    if (!e.isIntersecting) continue;
+    const img = e.target; io.unobserve(img);
+    const p = img.dataset.img; if (!p || pending.has(img)) continue;
+    pending.add(img);
+    iconURL(p).then(u => { document.querySelectorAll(`img.ico[data-img="${CSS.escape(p)}"]`).forEach(x => { x.src = u; x.removeAttribute('data-img'); }); })
+      .catch(() => { img.replaceWith(Object.assign(document.createElement('div'), {className:'ph', textContent:'?'})); })
+      .finally(() => pending.delete(img));
+  }
+}, {rootMargin: '600px 0px'}) : null;
+function watchIcons(){ if (io) document.querySelectorAll('img.ico[data-img]').forEach(i => io.observe(i)); }
+
+/* ---------------- boot ---------------- */
+async function loadExtra(){ try { initExtra(await (await fetch('/api/extra')).json()); } catch {} }
+async function loadIconMap(){ try { ICONMAP = await (await fetch('/api/icons')).json(); } catch {} }
+function settingsPanel(current, source){
+  const box = document.createElement('div');
+  box.className = 'panel gut'; box.id = 'settings'; box.style.cssText = 'max-width:680px;margin:14px auto';
+  box.innerHTML = `<div><b>Item data</b></div>
+    <p class="sub" style="margin:0">Right now the item list comes from ${source === 'local' ? 'your TF2 install at <b>'+esc(current)+'</b>' : 'the online copy of TF2\u2019s item files (updated within hours of every TF2 patch)'}.
+    If TF2 is installed, you can point the app at it: the list is then exact to your game version, and icons are read from your own game files.</p>
+    <div class="row"><input id="tfpath" class="in grow" placeholder="C:\\Program Files (x86)\\Steam\\steamapps\\common\\Team Fortress 2" value="${esc(current||'')}">
+      <button class="btn big" id="tfgo" type="button">Use this folder</button>
+      ${source === 'local' ? '<button class="btn" id="tfonline" type="button">Use online data</button>' : ''}
+      <button class="btn" id="tfclose" type="button">Close</button></div>
+    <p class="sub" id="tfmsg" style="margin:0;color:var(--AttribNegative)"></p>`;
+  $('#main').prepend(box);
+  const apply = async path => {
+    const r = await fetch('/api/tfdir', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({path})});
+    const j = await r.json(); if (!r.ok){ $('#tfmsg').textContent = j.error; return; }
+    location.reload();
+  };
+  $('#tfgo').onclick = () => apply($('#tfpath').value);
+  if ($('#tfonline')) $('#tfonline').onclick = () => apply('');
+  $('#tfclose').onclick = () => box.remove();
+}
+(async function boot(){
+  let st;
+  try { st = await (await fetch('/api/status')).json(); } catch { status('<span class="err">The checklist app isn\'t running.</span>'); return; }
+  $('#setBtn').onclick = () => { if (!$('#settings')) settingsPanel(st.tf_dir, st.source); };
+  try { const saved = await (await fetch('/api/state')).json(); S = migrate({...S, ...saved, types: {...S.types, ...(saved.types||{})}}); } catch {}
+  $('#sid').value = S.steamId || '';
+  $('#main').innerHTML = '<div class="empty"><h2>Loading the item list</h2><p id="buildmsg">This takes a few seconds the first time, and again after TF2 updates.</p></div>';
+  const stop = {done:false};
+  (async () => { while (!stop.done){ try { const j = await (await fetch('/api/status')).json(); if (j.job.msg && !stop.done && $('#buildmsg')) $('#buildmsg').textContent = j.job.msg + '…'; } catch {} await sleep(500); } })();
+  const [r] = await Promise.all([fetch('/api/catalog'), openIconDB().then(d => iconDB = d)]);
+  const cat = await r.json();
+  stop.done = true;
+  if (!r.ok){ $('#main').innerHTML = `<div class="empty"><h2>Couldn't load the item list</h2><p>${esc(cat.error||'')}</p></div>`; settingsPanel(st.tf_dir, st.source); return; }
+  initCatalog(cat);
+  await Promise.all([loadIconMap(), loadExtra()]);
+  $('#clsbar').innerHTML = '<button class="btn" type="button" data-cls="">All</button>' +
+    CLASSES.map((c,i) => `<button class="btn" type="button" data-cls="${i}" title="${c}" aria-label="${c}"><span class="emb" style="--c:${i}"></span></button>`).join('') +
+    '<button class="btn" type="button" data-cls="9">Multi</button><button class="btn" type="button" data-cls="10">All-class</button>';
+  const src = cat.source === 'local' ? 'your TF2 install' : 'TF2\u2019s online item files';
+  status(S.lastSync ? `Last synced ${esc(S.lastSync)}. Item list from ${src}, built ${esc(cat.built)}.` : 'Enter a Steam ID, custom URL name or profile link and press Sync. The backpack must be public.');
+  render();
+  // the wiki icon lookup finishes in the background on first run: pick it up when it's done
+  for (let i = 0; i < 120; i++){
+    await sleep(2000);
+    try { const j = await (await fetch('/api/status')).json(); if (!j.job.msg){ await Promise.all([loadIconMap(), loadExtra()]); render(); break; } } catch { break; }
+  }
+})();
+</script>
+</body></html>
