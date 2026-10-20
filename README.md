@@ -1,6 +1,9 @@
 # TF2 Catalog
 
-> **Disclaimer: this is mostly AI slop**, minus some code borrowed from the TF2 SDK. It was built mostly for my own convenience. Please forgive me. Item data comes from TF2's own files, but the rules on top of it (release years, what counts as unobtainable, hidden items) can be wrong, so double-check before you trade, and send a pull request when you spot a mistake.
+<img width="1479" height="941" alt="image" src="https://github.com/user-attachments/assets/98f768fa-918e-4f96-8d35-6cffb92adb91" />
+
+
+> **Disclaimer: this is mostly AI slop**, minus some code borrowed from the TF2 SDK. It was built mostly for my own convenience, but I wanted to share it anyway for those that may be completionists for certain sets in the game. All text below this is also AI. Please forgive me.
 
 A checklist for Team Fortress 2 collectors. Type in any Steam ID and see every cosmetic, taunt, weapon and medal you own and are missing, laid out like the in-game backpack.
 
